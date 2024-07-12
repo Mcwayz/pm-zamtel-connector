@@ -1,15 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const mtnRequestToPayTransferController = require('../controllers/mtn/requestToPayTransfer');
-const airtelTransactionRequestController = require('../controllers/airtel/transactionRequest');
-const airtelRequestToPayTransferController = require('../controllers/airtel/requestToPayTransfer');
+
 const zamtelRequestToPayTransferController = require('../controllers/zamtel/requestToPayTransfer');
 
 router.post('/transactionrequests', async (req, res) => {
   try {
     const data = req.body;
     console.log(`-> ${new Date()} :: POST /transactionrequests: ${JSON.stringify(data)}`);
-    const result = await airtelTransactionRequestController.transactionRequest(data);
+    const result = await zamtelRequestToPayTransferController.transactionRequest(data);
     console.log("Response: ", result);
 
     data.homeR2PTransactionId = result.homeR2PTransactionId;

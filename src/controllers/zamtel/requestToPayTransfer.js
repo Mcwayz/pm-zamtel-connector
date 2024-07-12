@@ -1,34 +1,10 @@
 const axios = require('axios');
 
-const checkAirtelTransactionStatus = async (transactionID) => {
-    console.log(`-> ${new Date()} :: GET ${process.env.AIRTEL_URL}/standard/v1/payments/${transactionID}: check airtel transaction`);
-    const tokenResponse = await axios.post(process.env.AIRTEL_URL + '/auth/oauth2/token', {
-        client_id: process.env.CLIENT_ID,
-        client_secret: process.env.CLIENT_SECRET_KEY,
-        grant_type: 'client_credentials'
-    });
 
-    const accessToken = tokenResponse.data.access_token;
-
-    // check transaction status with airtel
-    const airtelTransactionEnquiry = await axios.get(process.env.AIRTEL_URL + '/standard/v1/payments/' + transactionID,
-    {
-        headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'X-Country': 'ZM',
-            'X-Currency': 'ZMW',
-            'Content-Type': 'application/json'
-        }
-    });
-
-    const airtelResponse = airtelTransactionEnquiry.data.data.transaction.status;
-    console.log("Airtel Transaction Status: ", airtelResponse);
-    return airtelResponse;
-}
 
 const postRequestToPayTransfer = async (data) => {
     try {
-        const endpoint = process.env.AIRTEL_SDK_SCHEME_ADAPTER + '/requestToPayTransfer';
+        const endpoint = process.env.ZAMTEL_SDK_SCHEME_ADAPTER + '/requestToPayTransfer';
 
         const requestToPayTransferResponse = await axios.post(endpoint, data,
         {
@@ -43,7 +19,7 @@ const postRequestToPayTransfer = async (data) => {
         let msisdn = r2ptData.from.idValue;
         if (r2ptData.from.idValue.length > 9) msisdn = msisdn.slice(3);
 
-        let airtelEndpoint = process.env.BASE_URL + '/airtel/collections/push-payment';
+        let zamtelEndpoint = process.env.BASE_URL + '/airtel/collections/push-payment';
 
         const payload = {
             'transactionId': r2ptData.transactionRequestId,

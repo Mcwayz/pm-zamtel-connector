@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const airtelRequestToPayTransferController = require('../controllers/airtel/requestToPayTransfer');
-const mtnRequestToPayTransferController = require('../controllers/mtn/requestToPayTransfer');
+
 const zamtelRequestToPayTransferController = require('../controllers/zamtel/requestToPayTransfer');
 
 router.post('/requestToPayTransfer', async (req, res) => {
@@ -13,14 +12,10 @@ router.post('/requestToPayTransfer', async (req, res) => {
     const msisdn = data.payer.partyId;
     let result;
 
-    if (msisdn.startsWith('096') || msisdn.startsWith('076')) {
-      result = await mtnRequestToPayTransferController.postMTNRequestToPayTransfer(data);
-    } else if (msisdn.startsWith('097') || msisdn.startsWith('077')) {
-      result = await airtelRequestToPayTransferController.postRequestToPayTransfer(data);
-    } else if (msisdn.startsWith('095') || msisdn.startsWith('075')) {
+    if (msisdn.startsWith('095') || msisdn.startsWith('075')) {
       result = await zamtelRequestToPayTransferController.postRequestToPayTransfer(data);
     } else {
-      throw new Error('Invalid MSISDN prefix');
+      throw new Error('Invalid MSISDN Prefix');
     }
 
     console.log("Response: ", result);
