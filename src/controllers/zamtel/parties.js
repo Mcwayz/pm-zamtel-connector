@@ -2,7 +2,7 @@ const axios = require('axios');
 
 const getZamtelParties = async (data) => {
   try {
-    const tokenResponse = await axios.post(process.env.AIRTEL_URL + '/auth/oauth2/token', {
+    const tokenResponse = await axios.post(process.env.ZAMTEL_URL + '/auth/oauth2/token', {
         client_id: process.env.CLIENT_ID,
         client_secret: process.env.CLIENT_SECRET_KEY,
         grant_type: 'client_credentials'
@@ -16,7 +16,7 @@ const getZamtelParties = async (data) => {
     else msisdn = data.idValue;
   
     try {
-        const kycResponse = await axios.get(process.env.AIRTEL_URL + '/standard/v1/users/' + msisdn, 
+        const kycResponse = await axios.get(process.env.ZAMTEL_URL + '/standard/v1/users/' + msisdn, 
         {
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
@@ -26,7 +26,7 @@ const getZamtelParties = async (data) => {
             }
         });
 
-        console.log(`-> ${new Date()} :: GET ${process.env.AIRTEL_URL}/standard/v1/users/${msisdn}: ${JSON.stringify(kycResponse.data)}`);
+        console.log(`-> ${new Date()} :: GET ${process.env.ZAMTEL_URL}/standard/v1/users/${msisdn}: ${JSON.stringify(kycResponse.data)}`);
 
         if (kycResponse.status === 200) {
             if (kycResponse.data.status.response_code == "200") {

@@ -1,14 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const airtelFundsTransferController = require('../controllers/airtel/disbursements');
-const mtnFundsTransferController = require('../controllers/mtn/disbursements');
 const zamtelFundsTransferController = require('../controllers/zamtel/disbursements');
 
 
-router.post('/mnoFundsTransfer', async (req, res) => {
+router.post('/zamtelFundsTransfer', async (req, res) => {
     try {
       const data = req.body;
-      console.log(`-> ${new Date()} :: POST /mnoFundsTransfer: ${JSON.stringify(data)}`);
+      console.log(`-> ${new Date()} :: POST /zamtelFundsTransfer: ${JSON.stringify(data)}`);
   
       // Determine which controller to use based on the MSISDN prefix
       const msisdn = data.payer.partyId;

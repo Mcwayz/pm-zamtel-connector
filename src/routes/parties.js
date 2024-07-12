@@ -23,8 +23,7 @@
 
 const express = require('express');
 const router = express.Router();
-const airtelPartiesController = require('../controllers/airtel/parties');
-const mtnPartiesController = require('../controllers/mtn/parties');
+
 const zamtelPartiesController = require('../controllers/zamtel/parties');
 
 router.get('/parties/:idType/:idValue', async (req, res) => {
@@ -35,11 +34,8 @@ router.get('/parties/:idType/:idValue', async (req, res) => {
     console.log(`-> ${new Date()} :: GET /parties/${idType}/${idValue}: ${JSON.stringify(data)}`);
 
     let result;
-    if (idValue.startsWith('096') || idValue.startsWith('076')) {
-      result = await mtnPartiesController.getMTNParties(data);
-    } else if (idValue.startsWith('097') || idValue.startsWith('077')) {
-      result = await airtelPartiesController.getAirtelParties(data);
-    } else if (idValue.startsWith('095') || idValue.startsWith('075')) {
+  
+    if (idValue.startsWith('095') || idValue.startsWith('075')) {
       result = await zamtelPartiesController.getZamtelParties(data);
     } else {
       throw new Error('Invalid idValue prefix');

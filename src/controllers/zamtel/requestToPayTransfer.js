@@ -19,7 +19,7 @@ const postRequestToPayTransfer = async (data) => {
         let msisdn = r2ptData.from.idValue;
         if (r2ptData.from.idValue.length > 9) msisdn = msisdn.slice(3);
 
-        let zamtelEndpoint = process.env.BASE_URL + '/airtel/collections/push-payment';
+        let zamtelEndpoint = process.env.BASE_URL + '/zamtel/collections/push-payment';
 
         const payload = {
             'transactionId': r2ptData.transactionRequestId,
@@ -28,24 +28,21 @@ const postRequestToPayTransfer = async (data) => {
             'reference': `Get ${r2ptData.transferAmount} from ${msisdn}`
         };
 
-        const airtelPushResponse = await axios.post(airtelEndpoint, payload);
+        const zamtelPushResponse = await axios.post(zamtelEndpoint, payload);
 
-        console.log(`-> ${new Date()} :: POST ${process.env.AIRTEL_URL}/airtel/collections/push-payment: ${JSON.stringify(airtelPushResponse.data)}`);
+        console.log(`-> ${new Date()} :: POST ${process.env.ZAMTEL_URL}/zamtel/collections/push-payment: ${JSON.stringify(zamtelPushResponse.data)}`);
 
         // wait for 15 seconds before checking for the transaction status
         await new Promise(resolve => setTimeout(resolve, 10000));
 
         if (airtelPushResponse.data.status.response_code === 'DP00800001006') {
             let transactionStatus = null;
-            let checks = 0;
-
             transactionStatus = "Successful";
-
             if (transactionStatus === "Successful") {
                 // transfer approved
-                console.log(`-> ${new Date()} :: USSD Push approved`);
+                console.log(`-> ${new Date()} :: USSD Push Approved`);
 
-                const internalEndpoint = process.env.AIRTEL_SDK_SCHEME_ADAPTER + '/requestToPayTransfer/' + r2ptData.transactionRequestId;
+                const internalEndpoint = process.env.ZAMTEL_SDK_SCHEME_ADAPTER + '/requestToPayTransfer/' + r2ptData.transactionRequestId;
 
                 const response = await axios.put(internalEndpoint,
                 {   acceptQuote: "true"  },
@@ -62,9 +59,9 @@ const postRequestToPayTransfer = async (data) => {
                 return response.data;
             } else {
                 // transfer declined
-                console.log(`-> ${new Date()} :: USSD Push declined`);
+                console.log(`-> ${new Date()} :: USSD Push Declined`);
 
-                const internalEndpoint = process.env.AIRTEL_SDK_SCHEME_ADAPTER + '/requestToPayTransfer/' + r2ptData.transactionRequestId;
+                const internalEndpoint = process.env.ZAMTEL_SDK_SCHEME_ADAPTER + '/requestToPayTransfer/' + r2ptData.transactionRequestId;
 
                 const response = await axios.put(internalEndpoint,
                 {   acceptQuote: "false"  },
@@ -82,7 +79,7 @@ const postRequestToPayTransfer = async (data) => {
             }
         } else {
             console.log(`-> ${new Date()} :: USSD Push Failed!`);
-            const internalEndpoint = process.env.AIRTEL_SDK_SCHEME_ADAPTER + '/requestToPayTransfer/' + r2ptData.transactionRequestId;
+            const internalEndpoint = process.env.ZAMTEL_SDK_SCHEME_ADAPTER + '/requestToPayTransfer/' + r2ptData.transactionRequestId;
 
             const response = await axios.put(internalEndpoint,
             {   acceptQuote: "false"  },
