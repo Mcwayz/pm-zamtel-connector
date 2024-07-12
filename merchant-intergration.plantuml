@@ -1,0 +1,77 @@
+@startuml merchant to airtel intergration
+actor "Payer" as User
+participant "MMO\n(Airtel)" as MMO
+box "Payment Manager\nPayer DFSP"
+participant "Core\nConnector" as PayerCC
+participant "SDK Scheme\nAdapter" as PayerSDK
+end box
+participant "Mojaloop\nSwitch" as Switch
+participant "Payee SDK" as PayeeSDK
+participant "Core\nConnector" as PayeeCC
+actor "Merchant" as Payee
+autonumber 1 "<b>[0]"
+== Token retrieval ==
+PayerCC->MMO: **POST /auth/oauth2/token**\nRequest Bearer token
+MMO-->PayerCC: Return token and expiry time
+PayerCC->PayerCC: Cache token and refresh as needed
+====
+Payee->PayeeCC: Request a payement \n(payer identifier and amount)
+PayeeCC->PayeeSDK: POST /requestToPay
+PayeeSDK->Switch: GET /parties
+Switch->Switch: Determine Payer DFSP using oracle
+Switch->PayerSDK: GET /parties Lookup Payer Information
+PayerSDK->PayerCC: GET /parties Lookup Payer Information
+PayerCC->PayerCC: TBD (Get payer info from airtel)
+PayerCC-->PayerSDK: Response
+PayerSDK->Switch: PUT /parties
+Switch->PayeeSDK: PUT /parties
+PayeeSDK-->PayeeCC: Response
+PayeeCC->PayeeCC: Can get confirmation from merchant \nby presenting the party information
+PayeeCC->PayeeSDK: PUT /requestToPay
+PayeeSDK->Switch: POST /transactionRequest
+Switch->PayerSDK: POST /transactionRequest
+PayerSDK->PayerCC: POST /transactionRequest
+PayerCC-->PayerSDK: Response
+PayerSDK->Switch: PUT /transactionRequest
+Switch->PayeeSDK: PUT /transactionRequest
+PayeeSDK-->PayeeCC: Response
+PayerCC->PayerSDK: POST /requestToPayTransfer
+PayerSDK->Switch: POST /quotes
+Switch->PayeeSDK: POST /quotes
+PayeeSDK->PayeeCC: POST /quotesrequest
+PayeeCC-->PayeeSDK: Response
+PayeeSDK->Switch: PUT /quotes
+Switch->PayerSDK: PUT /quotes
+PayerSDK-->PayerCC: Response with quote info \n including _transferAmount_
+PayeeSDK->Switch: POST /transactionRequest
+PayerCC->MMO: **POST /merchant/v1/payments/**\nPush USSD confirmation
+MMO-->PayerCC: Return transaction response
+MMO->User: USSD confirmation pushed
+User-->MMO: Accept/Decline
+PayerCC->MMO: **POST /standard/v1/payments/{id}**\nCheck if the transaction was confirmed/approved\n(We need to do this after some time with some retries \nor we can use callback path to get notification \nfrom airtel when the transaction is executed)
+MMO-->PayerCC: Return transaction state
+alt user approves transaction
+    PayerCC->>PayerSDK: **PUT** /requestToPayTransfer\n(accept_quote=**true**)
+    activate PayerSDK
+    PayerSDK->>Switch: **POST** /transfers
+    Switch->Switch: Reserve Payer DFSP funds
+    Switch->PayeeSDK: **POST** /transfers
+    PayeeSDK->PayeeCC: **POST** /transfers
+    PayeeCC-->Payee: Credit merchant account
+    PayeeCC-->>PayeeSDK: Response
+    PayeeSDK->>Switch: **PUT** /transfers/{Id}
+    Switch->Switch: Commit Payee DFSP funds
+    deactivate PayeeSDK
+    Switch->>PayerSDK: **PUT** /transfers/{Id}
+    PayerSDK-->>Switch: Response
+    PayerSDK-->PayerCC: response
+    deactivate PayerSDK
+else user declines transaction
+    PayerCC->>PayerSDK: **PUT** /transfers/{id}\n(accept_quote=**false**)
+    activate PayerSDK
+    PayerSDK-->PayerCC: response
+    deactivate PayerSDK
+    PayerCC-->MMO: Refund?
+end
+MMO-->User: response
+@enduml

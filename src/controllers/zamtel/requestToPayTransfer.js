@@ -1,0 +1,131 @@
+const axios = require('axios');
+
+const checkAirtelTransactionStatus = async (transactionID) => {
+    console.log(`-> ${new Date()} :: GET ${process.env.AIRTEL_URL}/standard/v1/payments/${transactionID}: check airtel transaction`);
+    const tokenResponse = await axios.post(process.env.AIRTEL_URL + '/auth/oauth2/token', {
+        client_id: process.env.CLIENT_ID,
+        client_secret: process.env.CLIENT_SECRET_KEY,
+        grant_type: 'client_credentials'
+    });
+
+    const accessToken = tokenResponse.data.access_token;
+
+    // check transaction status with airtel
+    const airtelTransactionEnquiry = await axios.get(process.env.AIRTEL_URL + '/standard/v1/payments/' + transactionID,
+    {
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'X-Country': 'ZM',
+            'X-Currency': 'ZMW',
+            'Content-Type': 'application/json'
+        }
+    });
+
+    const airtelResponse = airtelTransactionEnquiry.data.data.transaction.status;
+    console.log("Airtel Transaction Status: ", airtelResponse);
+    return airtelResponse;
+}
+
+const postRequestToPayTransfer = async (data) => {
+    try {
+        const endpoint = process.env.AIRTEL_SDK_SCHEME_ADAPTER + '/requestToPayTransfer';
+
+        const requestToPayTransferResponse = await axios.post(endpoint, data,
+        {
+            headers : {
+              'Content-Type': 'application/json',
+              'Accept': '*/*'
+            }
+        });
+
+        const r2ptData = requestToPayTransferResponse.data;
+
+        let msisdn = r2ptData.from.idValue;
+        if (r2ptData.from.idValue.length > 9) msisdn = msisdn.slice(3);
+
+        let airtelEndpoint = process.env.BASE_URL + '/airtel/collections/push-payment';
+
+        const payload = {
+            'transactionId': r2ptData.transactionRequestId,
+            'mobile': msisdn,
+            'amount': r2ptData.transferAmount,
+            'reference': `Get ${r2ptData.transferAmount} from ${msisdn}`
+        };
+
+        const airtelPushResponse = await axios.post(airtelEndpoint, payload);
+
+        console.log(`-> ${new Date()} :: POST ${process.env.AIRTEL_URL}/airtel/collections/push-payment: ${JSON.stringify(airtelPushResponse.data)}`);
+
+        // wait for 15 seconds before checking for the transaction status
+        await new Promise(resolve => setTimeout(resolve, 10000));
+
+        if (airtelPushResponse.data.status.response_code === 'DP00800001006') {
+            let transactionStatus = null;
+            let checks = 0;
+
+            transactionStatus = "Successful";
+
+            if (transactionStatus === "Successful") {
+                // transfer approved
+                console.log(`-> ${new Date()} :: USSD Push approved`);
+
+                const internalEndpoint = process.env.AIRTEL_SDK_SCHEME_ADAPTER + '/requestToPayTransfer/' + r2ptData.transactionRequestId;
+
+                const response = await axios.put(internalEndpoint,
+                {   acceptQuote: "true"  },
+                {
+                    headers : {
+                        'Content-Type': 'application/json',
+                        'Accept': '*/*'
+                    }
+                });
+
+                console.log(`-> ${new Date()} :: PUT /requestToPayTransfer/${r2ptData.transactionRequestId}: {  "acceptQuote":"true"  }`);
+                console.log("Response: ", response.data);
+
+                return response.data;
+            } else {
+                // transfer declined
+                console.log(`-> ${new Date()} :: USSD Push declined`);
+
+                const internalEndpoint = process.env.AIRTEL_SDK_SCHEME_ADAPTER + '/requestToPayTransfer/' + r2ptData.transactionRequestId;
+
+                const response = await axios.put(internalEndpoint,
+                {   acceptQuote: "false"  },
+                {
+                    headers : {
+                        'Content-Type': 'application/json',
+                        'Accept': '*/*'
+                    }
+                });
+
+                console.log(`-> ${new Date()} :: PUT /requestToPayTransfer/${r2ptData.transactionRequestId}: {  "acceptQuote":"false"  }`);
+                console.log("Response: ", response.data);
+
+                return response.data;
+            }
+        } else {
+            console.log(`-> ${new Date()} :: USSD Push Failed!`);
+            const internalEndpoint = process.env.AIRTEL_SDK_SCHEME_ADAPTER + '/requestToPayTransfer/' + r2ptData.transactionRequestId;
+
+            const response = await axios.put(internalEndpoint,
+            {   acceptQuote: "false"  },
+            {
+                headers : {
+                    'Content-Type': 'application/json',
+                    'Accept': '*/*'
+                }
+            });
+
+            console.log(`-> ${new Date()} :: PUT /requestToPayTransfer/${r2ptData.transactionRequestId}: {  "acceptQuote":"false"  }`);
+            console.log("Response: ", response.data);
+
+            return response.data;
+        }
+    } catch (error) {
+        console.log(`-> ${new Date()} :: ERROR: ${error.message}`);
+        return { error: error.message };
+    }
+};
+
+module.exports = { postRequestToPayTransfer };
